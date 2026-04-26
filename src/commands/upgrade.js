@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { readManifest, writeManifest } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile } = require('../lib/gitlab');
+const { resolveTagCommit, downloadSkillFile } = require('../lib/provider');
 const { computeSha256 } = require('../lib/checksum');
 const { validateVersion } = require('../lib/validate');
 
@@ -28,7 +28,7 @@ async function upgradeCommand(nameAtVersion, projectRoot) {
     throw new Error(`Skill "${name}" not found in manifest. Use "skills add" to add it.`);
   }
 
-  const token = process.env.GITLAB_TOKEN;
+  const token = null; // auto-resolved in provider.js based on source URL
   const existing = manifest.skills[name];
 
   console.log(`Upgrading ${name} from ${existing.version} to ${version}...`);

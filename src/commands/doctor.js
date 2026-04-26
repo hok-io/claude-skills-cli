@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { readManifest, MANIFEST_PATH } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile } = require('../lib/gitlab');
+const { resolveTagCommit, downloadSkillFile, detectProvider, getToken } = require('../lib/provider');
 const { computeSha256 } = require('../lib/checksum');
 
 const BRANCH_LIKE = /^(main|master|develop|dev|staging)|[/\\]/;
@@ -63,18 +63,23 @@ async function doctorCommand(projectRoot) {
     warn('.gitignore not found — create one and add .claude/skills/*.md');
   }
 
-  // Token
-  const token = process.env.GITLAB_TOKEN;
-  if (token) {
-    ok('GITLAB_TOKEN is set');
-  } else {
-    warn('GITLAB_TOKEN is not set — private repos will fail');
+  // Tokens (report once per provider actually used)
+  const usedProviders = new Set(
+    Object.values(manifest.skills).map(s => detectProvider(s.source))
+  );
+  for (const provider of usedProviders) {
+    const envVar = provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
+    if (getToken(provider)) {
+      ok(`${envVar} is set (${provider})`);
+    } else {
+      warn(`${envVar} is not set — private ${provider} repos will fail`);
+    }
   }
 
   // Per-skill checks
   const skills = Object.entries(manifest.skills);
   for (const [name, skill] of skills) {
-    console.log(`\n  Skill: ${name}`);
+    console.log(`\n  Skill: ${name} [${detectProvider(skill.source)}]`);
 
     if (BRANCH_LIKE.test(skill.version)) {
       fail(`version "${skill.version}" looks like a branch (use a git tag)`);
@@ -86,7 +91,7 @@ async function doctorCommand(projectRoot) {
     if (!skill.sha256) fail('sha256 is missing');
 
     try {
-      const resolvedCommit = await resolveTagCommit(skill.source, skill.version, token);
+      const resolvedCommit = await resolveTagCommit(skill.source, skill.version, null);
       if (resolvedCommit !== skill.resolvedCommit) {
         fail(
           `resolvedCommit mismatch\n` +
@@ -97,7 +102,7 @@ async function doctorCommand(projectRoot) {
         ok('resolvedCommit matches remote');
       }
 
-      const content = await downloadSkillFile(skill.source, name, skill.version, token);
+      const content = await downloadSkillFile(skill.source, name, skill.version, null);
       const sha256 = computeSha256(content);
       if (sha256 !== skill.sha256) {
         fail(
@@ -111,7 +116,8 @@ async function doctorCommand(projectRoot) {
     } catch (err) {
       const isAuth =
         err.message.includes('permission denied') ||
-        err.message.includes('GitLab permission');
+        err.message.includes('GitLab permission') ||
+        err.message.includes('GitHub permission');
       if (isAuth) {
         warn(err.message);
       } else {

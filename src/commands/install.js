@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { readManifest } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile } = require('../lib/gitlab');
+const { resolveTagCommit, downloadSkillFile, detectProvider, getToken } = require('../lib/provider');
 const { computeSha256 } = require('../lib/checksum');
 
 async function installCommand(projectRoot) {
@@ -22,7 +22,8 @@ async function installCommand(projectRoot) {
     return;
   }
 
-  const token = process.env.GITLAB_TOKEN;
+  // token is resolved per-skill based on provider (github.com → GITHUB_TOKEN, else → GITLAB_TOKEN)
+  const token = null;
   const skillsDir = path.join(projectRoot, '.claude', 'skills');
   const tmpDir = path.join(projectRoot, '.claude', '.skills-tmp');
   const backupDir = path.join(projectRoot, '.claude', '.skills-backup');

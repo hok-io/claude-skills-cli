@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { readManifest, writeManifest, createEmptyManifest } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile } = require('../lib/gitlab');
+const { resolveTagCommit, downloadSkillFile } = require('../lib/provider');
 const { computeSha256 } = require('../lib/checksum');
 const { validateSkillName, validateSource, validateVersion } = require('../lib/validate');
 
@@ -12,7 +12,7 @@ async function addCommand(source, { skill: name, version }, projectRoot) {
   validateSource(source);
   validateVersion(version);
 
-  const token = process.env.GITLAB_TOKEN;
+  const token = null; // auto-resolved in provider.js based on source URL
   const manifest = readManifest(projectRoot) || createEmptyManifest();
 
   if (manifest.skills[name]) {
