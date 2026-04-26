@@ -99,8 +99,8 @@ function parseGitHubSource(source) {
 
 async function githubResolveTagCommit(source, version, token) {
   const { owner, repo } = parseGitHubSource(source);
-  const tag = version.startsWith('refs/') ? version : `refs/tags/${version}`;
-  const url = `https://api.github.com/repos/${owner}/${repo}/git/${encodeURIComponent(tag)}`;
+  const tagRef = version.startsWith('tags/') ? version : `tags/${version}`;
+  const url = `https://api.github.com/repos/${owner}/${repo}/git/ref/${tagRef}`;
 
   let res;
   try {
