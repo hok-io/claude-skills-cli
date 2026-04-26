@@ -1,182 +1,105 @@
 'use strict';
 
-// Detect provider from URL host
-function detectProvider(source) {
-  const { host } = new URL(source);
-  if (host === 'github.com' || host.endsWith('.github.com')) return 'github';
-  return 'gitlab';
-}
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
-function getToken(provider) {
-  if (provider === 'github') return process.env.GITHUB_TOKEN;
-  return process.env.GITLAB_TOKEN;
-}
+const exec = promisify(execFile);
 
-function getHeaders(provider, token) {
-  const headers = { 'User-Agent': 'skills-cli/1.0' };
-  if (!token) return headers;
-  if (provider === 'github') {
-    headers['Authorization'] = `Bearer ${token}`;
-    headers['X-GitHub-Api-Version'] = '2022-11-28';
-  } else {
-    headers['PRIVATE-TOKEN'] = token;
-  }
-  return headers;
-}
-
-// ---------- GitLab ----------
-
-function parseGitLabSource(source) {
-  const url = new URL(source);
-  const host = `${url.protocol}//${url.host}`;
-  const projectPath = url.pathname.replace(/^\//, '').replace(/\/$/, '');
-  return { host, projectPath };
-}
-
-async function gitlabResolveTagCommit(source, version, token) {
-  const { host, projectPath } = parseGitLabSource(source);
-  const encodedPath = encodeURIComponent(projectPath);
-  const url = `${host}/api/v4/projects/${encodedPath}/repository/tags/${encodeURIComponent(version)}`;
-
-  let res;
+async function git(args) {
   try {
-    res = await fetch(url, { headers: getHeaders('gitlab', token) });
+    const { stdout } = await exec('git', args, { maxBuffer: 50 * 1024 * 1024 });
+    return stdout;
   } catch (err) {
-    throw new Error(`Network error reaching ${host}: ${err.message}`);
+    if (err.code === 'ENOENT') {
+      throw new Error('git command not found. Install git and ensure it is on PATH.');
+    }
+    const msg = (err.stderr || err.message).trim();
+    throw new Error(`git ${args[0]} failed: ${msg}`);
   }
-
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(
-      `GitLab permission denied for ${source}.\n` +
-      `Next step: set GITLAB_TOKEN or ask the Project maintainer for access.`
-    );
-  }
-  if (res.status === 404) throw new Error(`Tag "${version}" not found in ${source}.`);
-  if (!res.ok) throw new Error(`GitLab API error: ${res.status} ${res.statusText}`);
-
-  const data = await res.json();
-  if (!data.commit?.id) throw new Error(`Unexpected GitLab API response for tag "${version}".`);
-  return data.commit.id;
 }
 
-async function gitlabDownloadFile(source, skillName, version, token) {
-  const { host, projectPath } = parseGitLabSource(source);
-  const encodedPath = encodeURIComponent(projectPath);
-  const encodedFile = encodeURIComponent(`${skillName}.md`);
-  const url = `${host}/api/v4/projects/${encodedPath}/repository/files/${encodedFile}/raw?ref=${encodeURIComponent(version)}`;
-
-  let res;
+async function withTempDir(fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skills-cli-'));
   try {
-    res = await fetch(url, {
-      headers: { ...getHeaders('gitlab', token), Accept: 'text/plain, application/octet-stream' },
-    });
-  } catch (err) {
-    throw new Error(`Network error: ${err.message}`);
+    return await fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
-
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(
-      `Cannot download ${skillName}@${version}.\n` +
-      `Reason: GitLab permission denied.\n` +
-      `Next step: set GITLAB_TOKEN or ask the Project maintainer for access.`
-    );
-  }
-  if (res.status === 404) throw new Error(`"${skillName}.md" not found in ${source}@${version}.`);
-  if (!res.ok) throw new Error(`Failed to download ${skillName}@${version}: ${res.status}`);
-  return res.text();
 }
 
-// ---------- GitHub ----------
-
-function parseGitHubSource(source) {
-  const url = new URL(source);
-  const parts = url.pathname.replace(/^\//, '').replace(/\/$/, '').split('/');
-  if (parts.length < 2) throw new Error(`Invalid GitHub URL: "${source}".`);
-  const owner = parts[0];
-  const repo = parts[1];
-  return { owner, repo };
+async function shallowClone(source, dir, ref) {
+  // core.autocrlf=false / core.eol=lf keep file bytes identical across OSes,
+  // so SHA-256 verification stays stable on Windows.
+  const args = [
+    '-c', 'core.autocrlf=false',
+    '-c', 'core.eol=lf',
+    'clone', '--depth', '1', '--quiet',
+  ];
+  if (ref) args.push('--branch', ref);
+  args.push(source, dir);
+  await git(args);
 }
 
-async function githubResolveTagCommit(source, version, token) {
-  const { owner, repo } = parseGitHubSource(source);
-  const tagRef = version.startsWith('tags/') ? version : `tags/${version}`;
-  const url = `https://api.github.com/repos/${owner}/${repo}/git/ref/${tagRef}`;
-
-  let res;
-  try {
-    res = await fetch(url, {
-      headers: { ...getHeaders('github', token), Accept: 'application/vnd.github+json' },
-    });
-  } catch (err) {
-    throw new Error(`Network error reaching GitHub: ${err.message}`);
+async function resolveTagCommit(source, version) {
+  const stdout = await git(['ls-remote', '--tags', source, version]);
+  const lines = stdout.trim().split('\n').filter(Boolean);
+  if (lines.length === 0) {
+    throw new Error(`Tag "${version}" not found in ${source}.`);
   }
-
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(
-      `GitHub permission denied for ${source}.\n` +
-      `Next step: set GITHUB_TOKEN or ask the Project maintainer for access.`
-    );
-  }
-  if (res.status === 404) throw new Error(`Tag "${version}" not found in ${source}.`);
-  if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
-
-  const data = await res.json();
-
-  // Lightweight tag → object.type === "commit"
-  // Annotated tag → object.type === "tag", need to dereference
-  if (data.object?.type === 'commit') return data.object.sha;
-
-  if (data.object?.type === 'tag') {
-    const tagUrl = `https://api.github.com/repos/${owner}/${repo}/git/tags/${data.object.sha}`;
-    const tagRes = await fetch(tagUrl, {
-      headers: { ...getHeaders('github', token), Accept: 'application/vnd.github+json' },
-    });
-    const tagData = await tagRes.json();
-    return tagData.object?.sha ?? (() => { throw new Error(`Cannot resolve annotated tag "${version}".`); })();
-  }
-
-  throw new Error(`Unexpected GitHub API response for tag "${version}".`);
+  // For annotated tags, ls-remote returns both refs/tags/X and refs/tags/X^{};
+  // the peeled (^{}) line is the underlying commit SHA.
+  const deref = lines.find(l => l.endsWith('^{}'));
+  const line = deref || lines[0];
+  return line.split(/\s+/)[0];
 }
 
-async function githubDownloadFile(source, skillName, version, token) {
-  const { owner, repo } = parseGitHubSource(source);
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${skillName}.md?ref=${encodeURIComponent(version)}`;
+async function downloadSkillFile(source, name, version) {
+  return withTempDir(async (dir) => {
+    await shallowClone(source, dir, version);
+    const file = path.join(dir, `${name}.md`);
+    if (!fs.existsSync(file)) {
+      throw new Error(`"${name}.md" not found in ${source}@${version}.`);
+    }
+    return fs.readFileSync(file, 'utf8');
+  });
+}
 
-  let res;
-  try {
-    res = await fetch(url, {
-      headers: { ...getHeaders('github', token), Accept: 'application/vnd.github.raw+json' },
-    });
-  } catch (err) {
-    throw new Error(`Network error: ${err.message}`);
+async function listSkillFiles(source) {
+  return withTempDir(async (dir) => {
+    await shallowClone(source, dir);
+    return fs.readdirSync(dir)
+      .filter(f => f.endsWith('.md'))
+      .map(f => f.slice(0, -3))
+      .sort();
+  });
+}
+
+async function listTags(source, limit = 5) {
+  const stdout = await git(['ls-remote', '--tags', '--refs', source]);
+  const tags = stdout.trim().split('\n').filter(Boolean).map(line =>
+    line.split(/\s+/)[1].replace('refs/tags/', '')
+  );
+  tags.sort(compareSemverDesc);
+  return tags.slice(0, limit);
+}
+
+function compareSemverDesc(a, b) {
+  const parts = v => v.replace(/^v/, '').split(/[.+-]/);
+  const ap = parts(a), bp = parts(b);
+  for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
+    const ai = ap[i], bi = bp[i];
+    if (ai === bi) continue;
+    // shorter wins: 1.0.0 > 1.0.0-rc1 (release > prerelease)
+    if (ai === undefined) return -1;
+    if (bi === undefined) return 1;
+    const an = parseInt(ai, 10), bn = parseInt(bi, 10);
+    if (!isNaN(an) && !isNaN(bn) && an !== bn) return bn - an;
+    return ai < bi ? 1 : -1;
   }
-
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(
-      `Cannot download ${skillName}@${version}.\n` +
-      `Reason: GitHub permission denied.\n` +
-      `Next step: set GITHUB_TOKEN or ask the Project maintainer for access.`
-    );
-  }
-  if (res.status === 404) throw new Error(`"${skillName}.md" not found in ${source}@${version}.`);
-  if (!res.ok) throw new Error(`Failed to download ${skillName}@${version}: ${res.status}`);
-  return res.text();
+  return 0;
 }
 
-// ---------- Unified API ----------
-
-async function resolveTagCommit(source, version, token) {
-  const provider = detectProvider(source);
-  const tok = token ?? getToken(provider);
-  if (provider === 'github') return githubResolveTagCommit(source, version, tok);
-  return gitlabResolveTagCommit(source, version, tok);
-}
-
-async function downloadSkillFile(source, skillName, version, token) {
-  const provider = detectProvider(source);
-  const tok = token ?? getToken(provider);
-  if (provider === 'github') return githubDownloadFile(source, skillName, version, tok);
-  return gitlabDownloadFile(source, skillName, version, tok);
-}
-
-module.exports = { resolveTagCommit, downloadSkillFile, detectProvider, getToken };
+module.exports = { resolveTagCommit, downloadSkillFile, listSkillFiles, listTags };

@@ -1,0 +1,28 @@
+name: Release check
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - run: npm ci
+
+      - name: Verify tag matches package version
+        run: |
+          node -e "const pkg=require('./package.json'); const expected='v'+pkg.version; const actual=process.env.GITHUB_REF_NAME; if (actual !== expected) { console.error(`Tag ${actual} does not match package version ${expected}`); process.exit(1); }"
+
+      - run: node bin/skills.js --show-version
+
+      - run: npm pack --dry-run

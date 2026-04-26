@@ -3,7 +3,7 @@
 const path = require('path');
 const fs = require('fs');
 const { readManifest } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile, detectProvider, getToken } = require('../lib/provider');
+const { resolveTagCommit, downloadSkillFile } = require('../lib/provider');
 const { computeSha256 } = require('../lib/checksum');
 
 async function installCommand(projectRoot) {
@@ -11,7 +11,7 @@ async function installCommand(projectRoot) {
 
   if (!manifest) {
     throw new Error(
-      '.claude/skills.json not found. Run "skills add" to add a skill first.'
+      '.claude/skills.json not found. Run "skills skill add" to add a skill first.'
     );
   }
 
@@ -22,8 +22,6 @@ async function installCommand(projectRoot) {
     return;
   }
 
-  // token is resolved per-skill based on provider (github.com → GITHUB_TOKEN, else → GITLAB_TOKEN)
-  const token = null;
   const skillsDir = path.join(projectRoot, '.claude', 'skills');
   const tmpDir = path.join(projectRoot, '.claude', '.skills-tmp');
   const backupDir = path.join(projectRoot, '.claude', '.skills-backup');
@@ -37,7 +35,7 @@ async function installCommand(projectRoot) {
     for (const [name, skill] of skills) {
       process.stdout.write(`Downloading ${name}@${skill.version}... `);
 
-      const resolvedCommit = await resolveTagCommit(skill.source, skill.version, token);
+      const resolvedCommit = await resolveTagCommit(skill.source, skill.version);
 
       if (resolvedCommit !== skill.resolvedCommit) {
         throw new Error(
@@ -49,7 +47,7 @@ async function installCommand(projectRoot) {
         );
       }
 
-      const content = await downloadSkillFile(skill.source, name, skill.version, token);
+      const content = await downloadSkillFile(skill.source, name, skill.version);
       const sha256 = computeSha256(content);
 
       if (sha256 !== skill.sha256) {

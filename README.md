@@ -5,7 +5,7 @@
 Manage versioned [Claude Code](https://claude.ai/code) Skills from your own GitHub or GitLab repo.
 
 ```bash
-npm install -g github:hok-io/claude-skills-cli#v1.0.0
+npm install -g github:hok-io/claude-skills-cli#v1.1.0-alpha
 ```
 
 ---
@@ -19,7 +19,21 @@ Claude Code Skills are `.md` files that give Claude reusable instructions. If yo
 - Pin skills to a git tag — everyone gets the same file
 - Verify SHA-256 checksum on every install
 - Detect force-pushed tags and stop before corrupting anything
-- Works with private **GitHub** and **GitLab** repos
+- **No tokens to manage** — uses your existing `git` auth (SSH key, credential helper, `gh auth`, SSO… anything `git clone` accepts)
+
+---
+
+## Who is this for?
+
+Three roles work around Claude Skills. **This CLI covers the first two** — the third is just plain git, no special tooling required.
+
+| Role | Works in | Responsible for |
+|---|---|---|
+| **Team member** | A project that uses skills | Runs `skills install` after pulling new commits — gets the `.md` files matching what the project pinned |
+| **Project maintainer** | The same project's `.claude/skills.json` | Decides which skills the project uses and which versions it pins |
+| **Skill source maintainer** | A separate skills repo (the _source repo_) | Writes the `.md` skill files; tags new versions |
+
+Skill source maintainers don't use this CLI — they just `git tag` and `git push`. See the **[team skills template](https://github.com/hok-io/team-skills-template)** for what that side looks like (file layout, frontmatter, tagging conventions).
 
 ---
 
@@ -61,11 +75,13 @@ git tag v1.0.0
 git push --tags
 ```
 
+> Need a starting point? Use the **[team-skills-template repo](https://github.com/hok-io/team-skills-template)** — it shows the expected file layout, frontmatter, and versioning conventions.
+
 ### 2. Install the CLI
 
 ```bash
 # From GitHub (no npm registry needed)
-npm install -g github:hok-io/claude-skills-cli#v1.0.0
+npm install -g github:hok-io/claude-skills-cli#v1.1.0-alpha
 ```
 
 ### 3. Add skills to your project
@@ -73,14 +89,11 @@ npm install -g github:hok-io/claude-skills-cli#v1.0.0
 ```bash
 cd your-project
 
-# GitHub
-GITHUB_TOKEN=ghp_xxx skills add https://github.com/myorg/my-skills \
-  --skill prd --version v1.0.0
-
-# GitLab self-hosted
-GITLAB_TOKEN=glpat-xxx skills add https://gitlab.mycompany.com/team/my-skills \
-  --skill prd --version v1.0.0
+# GitHub, GitLab, self-hosted — anything git can clone
+skills skill add https://github.com/myorg/my-skills --skill prd --version v1.0.0
 ```
+
+If `git clone <url>` works on your machine, this works too. No tokens to set up.
 
 This writes `.claude/skills.json` and downloads the `.md` file.
 
@@ -93,21 +106,78 @@ This writes `.claude/skills.json` and downloads the `.md` file.
 ### 5. Team members sync after clone
 
 ```bash
-GITHUB_TOKEN=ghp_xxx skills install
+skills install
 ```
 
 ---
 
 ## Commands
 
-| Command | Who | Changes `skills.json` | Description |
-|---|---|:---:|---|
-| `install` | Everyone | No | Sync `.claude/skills/` from manifest |
-| `list` | Everyone | No | Show all skills and versions |
-| `doctor` | Everyone | No | Diagnose environment and config |
-| `add` | Maintainer | Yes | Add a skill |
-| `upgrade` | Maintainer | Yes | Upgrade a skill to a new version |
-| `remove` | Maintainer | Yes | Remove a skill |
+Grouped by who uses them. Run `skills --help`, `skills skill --help`, `skills remote --help`, or any subcommand with `--help` for examples.
+
+### For team members (read-only)
+
+| Command | Description |
+|---|---|
+| `skills install` | Sync `.claude/skills/` from manifest |
+| `skills list` | Show locally installed skills and versions |
+| `skills doctor` | Diagnose environment and config |
+
+### For project maintainers (modifies `skills.json`)
+
+| Command | Description |
+|---|---|
+| `skills skill add <source> --skill <name> --version <tag>` | Add a new skill |
+| `skills skill upgrade <name>@<version>` | Upgrade one skill to a specific version |
+| `skills skill upgrade --all` | Upgrade every skill to its latest tag |
+| `skills skill remove <name>` | Remove a skill |
+
+### Discover (everyone, hits remote, read-only)
+
+| Command | Description |
+|---|---|
+| `skills remote search <source>` | List `.md` skills available in a remote repo |
+| `skills remote tags <source>` | Show the latest 5 tags of a remote repo |
+| `skills remote outdated` | Check installed skills for newer tags on their remote |
+| `skills remote available` | List skills in your manifest sources that are not installed locally |
+
+---
+
+## Common workflows
+
+### Discover what's available before adding
+
+```bash
+# What skills does this repo offer?
+skills remote search https://github.com/myorg/my-skills
+
+# What versions exist?
+skills remote tags https://github.com/myorg/my-skills
+
+# Add the one you want
+skills skill add https://github.com/myorg/my-skills --skill prd --version v1.2.0
+```
+
+### Upgrade routinely
+
+```bash
+# What's behind latest across all installed skills?
+skills remote outdated
+
+# Upgrade just one
+skills skill upgrade prd@v1.3.0
+
+# Or bump everything to latest
+skills skill upgrade --all
+```
+
+### See what else the repos you already use offer
+
+```bash
+skills remote available
+```
+
+After any maintainer change, commit the updated `.claude/skills.json` so teammates can `skills install`.
 
 ---
 
@@ -117,28 +187,13 @@ GITHUB_TOKEN=ghp_xxx skills install
 
 ```bash
 # Pinned version (recommended)
-npm install -g github:hok-io/claude-skills-cli#v1.0.0
+npm install -g github:hok-io/claude-skills-cli#v1.1.0-alpha
 
 # Always latest
 npm install -g github:hok-io/claude-skills-cli
 ```
 
-### B) From GitHub Packages
-
-```bash
-# One-time registry config
-npm config set @hok-io:registry https://npm.pkg.github.com
-
-# Install
-npm install -g @hok-io/claude-skills-cli
-
-# Or pin to a version
-npm install -g @hok-io/claude-skills-cli@1.0.0
-```
-
-> Requires a GitHub token with `read:packages` scope.
-
-### C) Local / offline
+### B) Local / offline
 
 ```bash
 git clone https://github.com/hok-io/claude-skills-cli.git
@@ -149,15 +204,23 @@ npm link
 
 ---
 
+## Requirements
+
+- Node.js >= 18
+- `git` on PATH
+
+The CLI shells out to `git` for every fetch. Whatever auth your `git` is configured with (SSH key, OS credential helper, `gh auth`, corporate SSO…) is what the CLI uses. There is nothing extra to configure.
+
+---
+
 ## Supported sources
 
-| URL | Token env var |
-|---|---|
-| `https://github.com/...` | `GITHUB_TOKEN` |
-| `https://gitlab.com/...` | `GITLAB_TOKEN` |
-| `https://gitlab.yourcompany.com/...` | `GITLAB_TOKEN` |
+Any HTTPS URL that `git clone` accepts:
 
-The provider is detected automatically from the URL.
+- `https://github.com/owner/repo`
+- `https://gitlab.com/group/repo`
+- `https://gitlab.yourcompany.com/team/repo`
+- Any self-hosted git server
 
 ---
 
@@ -186,7 +249,7 @@ The provider is detected automatically from the URL.
 - `install` never modifies `skills.json`
 - `install` is atomic — a failed download never corrupts existing skills
 - Only git tags are accepted as versions (branches are rejected)
-- If a tag is force-pushed after `add`, `install` stops with an error
+- If a tag is force-pushed after `skills skill add`, `install` stops with an error
 - Every file is SHA-256 verified before being written
 
 ---
@@ -195,9 +258,7 @@ The provider is detected automatically from the URL.
 
 | Variable | Description |
 |---|---|
-| `GITHUB_TOKEN` | Token for GitHub private repos |
-| `GITLAB_TOKEN` | Token for GitLab private repos |
-| `SKILLS_ALLOWED_SOURCES` | Comma-separated list of allowed source URL prefixes (optional) |
+| `SKILLS_ALLOWED_SOURCES` | Comma-separated list of allowed source URL prefixes (optional, for org policy) |
 
 ---
 

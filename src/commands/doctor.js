@@ -2,9 +2,13 @@
 
 const path = require('path');
 const fs = require('fs');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const { readManifest, MANIFEST_PATH } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile, detectProvider, getToken } = require('../lib/provider');
+const { resolveTagCommit, downloadSkillFile } = require('../lib/provider');
 const { computeSha256 } = require('../lib/checksum');
+
+const exec = promisify(execFile);
 
 const BRANCH_LIKE = /^(main|master|develop|dev|staging)|[/\\]/;
 
@@ -25,11 +29,22 @@ async function doctorCommand(projectRoot) {
     fail(`Node.js ${process.versions.node} — requires Node.js >= 18`);
   }
 
+  // git is the transport, so it must be installed and reachable.
+  try {
+    const { stdout } = await exec('git', ['--version']);
+    ok(stdout.trim());
+  } catch {
+    fail('git not found — install git and ensure it is on PATH');
+    console.log('\nIssues found.');
+    process.exitCode = 1;
+    return;
+  }
+
   // Manifest exists
   const manifestPath = path.join(projectRoot, MANIFEST_PATH);
   if (!fs.existsSync(manifestPath)) {
     fail(`${MANIFEST_PATH} not found`);
-    console.log('\nIssues found. Run "skills add" to initialize.');
+    console.log('\nIssues found. Run "skills skill add" to initialize.');
     process.exitCode = 1;
     return;
   }
@@ -63,23 +78,10 @@ async function doctorCommand(projectRoot) {
     warn('.gitignore not found — create one and add .claude/skills/*.md');
   }
 
-  // Tokens (report once per provider actually used)
-  const usedProviders = new Set(
-    Object.values(manifest.skills).map(s => detectProvider(s.source))
-  );
-  for (const provider of usedProviders) {
-    const envVar = provider === 'github' ? 'GITHUB_TOKEN' : 'GITLAB_TOKEN';
-    if (getToken(provider)) {
-      ok(`${envVar} is set (${provider})`);
-    } else {
-      warn(`${envVar} is not set — private ${provider} repos will fail`);
-    }
-  }
-
   // Per-skill checks
   const skills = Object.entries(manifest.skills);
   for (const [name, skill] of skills) {
-    console.log(`\n  Skill: ${name} [${detectProvider(skill.source)}]`);
+    console.log(`\n  Skill: ${name}`);
 
     if (BRANCH_LIKE.test(skill.version)) {
       fail(`version "${skill.version}" looks like a branch (use a git tag)`);
@@ -91,7 +93,7 @@ async function doctorCommand(projectRoot) {
     if (!skill.sha256) fail('sha256 is missing');
 
     try {
-      const resolvedCommit = await resolveTagCommit(skill.source, skill.version, null);
+      const resolvedCommit = await resolveTagCommit(skill.source, skill.version);
       if (resolvedCommit !== skill.resolvedCommit) {
         fail(
           `resolvedCommit mismatch\n` +
@@ -102,7 +104,7 @@ async function doctorCommand(projectRoot) {
         ok('resolvedCommit matches remote');
       }
 
-      const content = await downloadSkillFile(skill.source, name, skill.version, null);
+      const content = await downloadSkillFile(skill.source, name, skill.version);
       const sha256 = computeSha256(content);
       if (sha256 !== skill.sha256) {
         fail(
@@ -114,15 +116,7 @@ async function doctorCommand(projectRoot) {
         ok('sha256 matches');
       }
     } catch (err) {
-      const isAuth =
-        err.message.includes('permission denied') ||
-        err.message.includes('GitLab permission') ||
-        err.message.includes('GitHub permission');
-      if (isAuth) {
-        warn(err.message);
-      } else {
-        fail(err.message);
-      }
+      fail(err.message);
     }
   }
 

@@ -12,19 +12,18 @@ async function addCommand(source, { skill: name, version }, projectRoot) {
   validateSource(source);
   validateVersion(version);
 
-  const token = null; // auto-resolved in provider.js based on source URL
   const manifest = readManifest(projectRoot) || createEmptyManifest();
 
   if (manifest.skills[name]) {
     throw new Error(
-      `Skill "${name}" already exists. Use "skills upgrade ${name}@<version>" to upgrade.`
+      `Skill "${name}" already exists. Use "skills skill upgrade ${name}@<version>" to upgrade.`
     );
   }
 
   console.log(`Resolving ${name}@${version}...`);
 
-  const resolvedCommit = await resolveTagCommit(source, version, token);
-  const content = await downloadSkillFile(source, name, version, token);
+  const resolvedCommit = await resolveTagCommit(source, version);
+  const content = await downloadSkillFile(source, name, version);
   const sha256 = computeSha256(content);
 
   manifest.skills[name] = { source, version, resolvedCommit, sha256 };

@@ -6,7 +6,7 @@ async function listCommand(projectRoot) {
   const manifest = readManifest(projectRoot);
 
   if (!manifest) {
-    console.log('No .claude/skills.json found. Run "skills add" to add a skill.');
+    console.log('No .claude/skills.json found. Run "skills skill add" to add a skill.');
     return;
   }
 
