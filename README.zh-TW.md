@@ -31,6 +31,14 @@ github.com/myorg/skills                your-project/
 
 ### A) 從 GitHub 直接安裝（不需要發布到 npm）
 
+釘住特定版本（推薦）：
+
+```bash
+npm install -g github:hok-io/cli-test#v1.0.0
+```
+
+或安裝最新版：
+
 ```bash
 npm install -g github:hok-io/cli-test
 ```

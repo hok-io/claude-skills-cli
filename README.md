@@ -31,6 +31,14 @@ There are three ways to install, depending on your use case.
 
 ### A) Install from GitHub (no npm publish required)
 
+Pin to a specific version (recommended):
+
+```bash
+npm install -g github:hok-io/cli-test#v1.0.0
+```
+
+Or always get the latest:
+
 ```bash
 npm install -g github:hok-io/cli-test
 ```
