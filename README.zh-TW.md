@@ -54,20 +54,23 @@ skills list
 
 ### B) GitHub Packages（團隊使用推薦）
 
-發布到組織的 GitHub Packages registry，讓整個團隊安裝同一個版本：
+推送新版本 tag 時自動發布。安裝方式：
 
 ```bash
-# 設定 registry（一次性）
+# 設定 registry（每台機器只需一次）
 npm config set @hok-io:registry https://npm.pkg.github.com
 
-# 安裝
+# 安裝最新版
 npm install -g @hok-io/claude-skills-cli
+
+# 或釘住特定版本
+npm install -g @hok-io/claude-skills-cli@1.0.0
 
 # 使用
 skills install
 ```
 
-> 需要 `GITHUB_TOKEN`，並開啟 `read:packages` 權限。
+> 需要 `GITHUB_TOKEN`（或 personal access token），並開啟 `read:packages` 權限。
 
 ### C) 本機 / Offline（clone 後 link）
 

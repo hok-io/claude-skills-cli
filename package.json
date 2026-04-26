@@ -1,5 +1,5 @@
 {
-  "name": "claude-skills-cli",
+  "name": "@hok-io/claude-skills-cli",
   "version": "1.0.0",
   "description": "CLI tool for managing Claude Skills in projects",
   "bin": {
@@ -21,7 +21,15 @@
     "claude",
     "skills",
     "cli",
+    "github",
     "gitlab"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hok-io/claude-skills-cli.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
 }

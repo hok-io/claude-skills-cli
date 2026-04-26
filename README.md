@@ -54,20 +54,23 @@ skills list
 
 ### B) GitHub Packages (recommended for teams)
 
-Publish to your org's GitHub Packages registry so the whole team installs the same version:
+Published automatically when a new version tag is pushed. Install with:
 
 ```bash
-# Configure registry (one time)
+# Configure registry (one time per machine)
 npm config set @hok-io:registry https://npm.pkg.github.com
 
-# Install
+# Install latest
 npm install -g @hok-io/claude-skills-cli
+
+# Or pin to a specific version
+npm install -g @hok-io/claude-skills-cli@1.0.0
 
 # Use
 skills install
 ```
 
-> Requires `GITHUB_TOKEN` with `read:packages` scope.
+> Requires a `GITHUB_TOKEN` (or personal access token) with `read:packages` scope.
 
 ### C) Local / offline (clone and link)
 
