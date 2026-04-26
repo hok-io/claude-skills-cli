@@ -1,0 +1,27 @@
+{
+  "name": "skills-cli",
+  "version": "1.0.0",
+  "description": "CLI tool for managing Claude Skills in projects",
+  "bin": {
+    "skills": "./bin/skills.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^11.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "claude",
+    "skills",
+    "cli",
+    "gitlab"
+  ],
+  "license": "MIT"
+}

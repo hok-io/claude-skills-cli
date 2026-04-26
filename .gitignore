@@ -1,0 +1,4 @@
+node_modules/
+.claude/skills/*.md
+.claude/.skills-tmp/
+.claude/.skills-backup/
