@@ -27,10 +27,54 @@ Only `.claude/skills.json` is committed. The `.md` files are generated — delet
 
 ## Installation
 
+There are three ways to install, depending on your use case.
+
+### A) Install from GitHub (no npm publish required)
+
 ```bash
-npm install -g skills-cli
-# or use without installing:
-npx skills-cli <command>
+npm install -g github:hok-io/cli-test
+```
+
+After install, use the `skills` command directly:
+
+```bash
+skills install
+skills list
+```
+
+> For private repos, `GITHUB_TOKEN` must be set when installing.
+
+### B) GitHub Packages (recommended for teams)
+
+Publish to your org's GitHub Packages registry so the whole team installs the same version:
+
+```bash
+# Configure registry (one time)
+npm config set @hok-io:registry https://npm.pkg.github.com
+
+# Install
+npm install -g @hok-io/skills-cli
+
+# Use
+skills install
+```
+
+> Requires `GITHUB_TOKEN` with `read:packages` scope.
+
+### C) Local / offline (clone and link)
+
+```bash
+git clone https://github.com/hok-io/cli-test.git
+cd cli-test
+npm install
+npm link
+```
+
+After linking, the `skills` command is available globally without any registry or internet access.
+
+```bash
+skills install
+skills list
 ```
 
 ## Supported Sources

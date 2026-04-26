@@ -27,10 +27,54 @@ github.com/myorg/skills                your-project/
 
 ## 安裝
 
+依照使用情境選擇以下三種方式之一。
+
+### A) 從 GitHub 直接安裝（不需要發布到 npm）
+
 ```bash
-npm install -g skills-cli
-# 或不安裝直接使用：
-npx skills-cli <指令>
+npm install -g github:hok-io/cli-test
+```
+
+安裝後直接使用 `skills` 指令：
+
+```bash
+skills install
+skills list
+```
+
+> 若 repo 為 private，安裝時需設定 `GITHUB_TOKEN`。
+
+### B) GitHub Packages（團隊使用推薦）
+
+發布到組織的 GitHub Packages registry，讓整個團隊安裝同一個版本：
+
+```bash
+# 設定 registry（一次性）
+npm config set @hok-io:registry https://npm.pkg.github.com
+
+# 安裝
+npm install -g @hok-io/skills-cli
+
+# 使用
+skills install
+```
+
+> 需要 `GITHUB_TOKEN`，並開啟 `read:packages` 權限。
+
+### C) 本機 / Offline（clone 後 link）
+
+```bash
+git clone https://github.com/hok-io/cli-test.git
+cd cli-test
+npm install
+npm link
+```
+
+Link 完成後，`skills` 指令在全域可用，不需要任何 registry 或網路。
+
+```bash
+skills install
+skills list
 ```
 
 ## 支援的來源
