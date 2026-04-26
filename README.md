@@ -1,6 +1,6 @@
 [中文版](README.zh-TW.md)
 
-# skills-cli
+# claude-skills-cli
 
 A CLI tool for managing Claude Skills across your team. One committed manifest file keeps every machine in sync with the same skill versions.
 
@@ -34,13 +34,13 @@ There are three ways to install, depending on your use case.
 Pin to a specific version (recommended):
 
 ```bash
-npm install -g github:hok-io/cli-test#v1.0.0
+npm install -g github:hok-io/claude-skills-cli#v1.0.0
 ```
 
 Or always get the latest:
 
 ```bash
-npm install -g github:hok-io/cli-test
+npm install -g github:hok-io/claude-skills-cli
 ```
 
 After install, use the `skills` command directly:
@@ -61,7 +61,7 @@ Publish to your org's GitHub Packages registry so the whole team installs the sa
 npm config set @hok-io:registry https://npm.pkg.github.com
 
 # Install
-npm install -g @hok-io/skills-cli
+npm install -g @hok-io/claude-skills-cli
 
 # Use
 skills install
@@ -72,8 +72,8 @@ skills install
 ### C) Local / offline (clone and link)
 
 ```bash
-git clone https://github.com/hok-io/cli-test.git
-cd cli-test
+git clone https://github.com/hok-io/claude-skills-cli.git
+cd claude-skills-cli
 npm install
 npm link
 ```
@@ -111,13 +111,13 @@ The provider is detected automatically from the URL. No extra config needed.
 **After cloning a project:**
 
 ```bash
-npx skills-cli install
+skills install
 ```
 
 **Add a skill (GitHub):**
 
 ```bash
-GITHUB_TOKEN=ghp_xxx npx skills-cli add https://github.com/myorg/skills \
+GITHUB_TOKEN=ghp_xxx skills add https://github.com/myorg/skills \
   --skill prd \
   --version v1.2.0
 ```
@@ -125,7 +125,7 @@ GITHUB_TOKEN=ghp_xxx npx skills-cli add https://github.com/myorg/skills \
 **Add a skill (GitLab self-hosted):**
 
 ```bash
-GITLAB_TOKEN=glpat-xxx npx skills-cli add https://gitlab.mycompany.com/team/skills \
+GITLAB_TOKEN=glpat-xxx skills add https://gitlab.mycompany.com/team/skills \
   --skill prd \
   --version v1.2.0
 ```
@@ -133,19 +133,19 @@ GITLAB_TOKEN=glpat-xxx npx skills-cli add https://gitlab.mycompany.com/team/skil
 **Upgrade a skill:**
 
 ```bash
-npx skills-cli upgrade prd@v1.3.0
+skills upgrade prd@v1.3.0
 ```
 
 **Remove a skill:**
 
 ```bash
-npx skills-cli remove prd
+skills remove prd
 ```
 
 **List installed skills:**
 
 ```bash
-npx skills-cli list
+skills list
 # prd        v1.2.0  https://github.com/myorg/skills
 # review-pr  v2.0.0  https://github.com/myorg/skills
 ```
@@ -153,7 +153,7 @@ npx skills-cli list
 **Diagnose issues:**
 
 ```bash
-npx skills-cli doctor
+skills doctor
 ```
 
 ## `.claude/skills.json`

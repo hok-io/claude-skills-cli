@@ -1,6 +1,6 @@
 [English](README.md)
 
-# skills-cli
+# claude-skills-cli
 
 管理團隊 Claude Skills 的 CLI 工具。只需 commit 一份 manifest 檔，每台機器都能同步到相同版本的 Skills。
 
@@ -34,13 +34,13 @@ github.com/myorg/skills                your-project/
 釘住特定版本（推薦）：
 
 ```bash
-npm install -g github:hok-io/cli-test#v1.0.0
+npm install -g github:hok-io/claude-skills-cli#v1.0.0
 ```
 
 或安裝最新版：
 
 ```bash
-npm install -g github:hok-io/cli-test
+npm install -g github:hok-io/claude-skills-cli
 ```
 
 安裝後直接使用 `skills` 指令：
@@ -61,7 +61,7 @@ skills list
 npm config set @hok-io:registry https://npm.pkg.github.com
 
 # 安裝
-npm install -g @hok-io/skills-cli
+npm install -g @hok-io/claude-skills-cli
 
 # 使用
 skills install
@@ -72,8 +72,8 @@ skills install
 ### C) 本機 / Offline（clone 後 link）
 
 ```bash
-git clone https://github.com/hok-io/cli-test.git
-cd cli-test
+git clone https://github.com/hok-io/claude-skills-cli.git
+cd claude-skills-cli
 npm install
 npm link
 ```
@@ -111,13 +111,13 @@ CLI 從 URL 自動偵測 provider，不需要額外設定。
 **Clone 專案後同步：**
 
 ```bash
-npx skills-cli install
+skills install
 ```
 
 **新增 Skill（GitHub）：**
 
 ```bash
-GITHUB_TOKEN=ghp_xxx npx skills-cli add https://github.com/myorg/skills \
+GITHUB_TOKEN=ghp_xxx skills add https://github.com/myorg/skills \
   --skill prd \
   --version v1.2.0
 ```
@@ -125,7 +125,7 @@ GITHUB_TOKEN=ghp_xxx npx skills-cli add https://github.com/myorg/skills \
 **新增 Skill（GitLab self-hosted）：**
 
 ```bash
-GITLAB_TOKEN=glpat-xxx npx skills-cli add https://gitlab.mycompany.com/team/skills \
+GITLAB_TOKEN=glpat-xxx skills add https://gitlab.mycompany.com/team/skills \
   --skill prd \
   --version v1.2.0
 ```
@@ -133,19 +133,19 @@ GITLAB_TOKEN=glpat-xxx npx skills-cli add https://gitlab.mycompany.com/team/skil
 **升級 Skill：**
 
 ```bash
-npx skills-cli upgrade prd@v1.3.0
+skills upgrade prd@v1.3.0
 ```
 
 **移除 Skill：**
 
 ```bash
-npx skills-cli remove prd
+skills remove prd
 ```
 
 **查看已安裝的 Skills：**
 
 ```bash
-npx skills-cli list
+skills list
 # prd        v1.2.0  https://github.com/myorg/skills
 # review-pr  v2.0.0  https://github.com/myorg/skills
 ```
@@ -153,7 +153,7 @@ npx skills-cli list
 **診斷問題：**
 
 ```bash
-npx skills-cli doctor
+skills doctor
 ```
 
 ## `.claude/skills.json` 格式
