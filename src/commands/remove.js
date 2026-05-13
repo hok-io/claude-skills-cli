@@ -18,9 +18,9 @@ async function removeCommand(name, projectRoot) {
   delete manifest.skills[name];
   writeManifest(projectRoot, manifest);
 
-  const skillFile = path.join(projectRoot, '.claude', 'skills', `${name}.md`);
-  if (fs.existsSync(skillFile)) {
-    fs.unlinkSync(skillFile);
+  const skillDir = path.join(projectRoot, '.claude', 'skills', name);
+  if (fs.existsSync(skillDir)) {
+    fs.rmSync(skillDir, { recursive: true, force: true });
   }
 
   console.log(`Removed skill "${name}".`);

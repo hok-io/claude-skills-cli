@@ -3,21 +3,21 @@
 const path = require('path');
 const fs = require('fs');
 const { readManifest, writeManifest } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile, listTags } = require('../lib/provider');
-const { computeSha256 } = require('../lib/checksum');
+const { resolveTagCommit, downloadSkill, listTags } = require('../lib/provider');
+const { computeFolderSha256 } = require('../lib/checksum');
 const { validateVersion } = require('../lib/validate');
 
 async function performUpgrade(name, existing, newVersion, manifest, projectRoot) {
   const resolvedCommit = await resolveTagCommit(existing.source, newVersion);
-  const content = await downloadSkillFile(existing.source, name, newVersion);
-  const sha256 = computeSha256(content);
-
-  manifest.skills[name] = { ...existing, version: newVersion, resolvedCommit, sha256 };
-  writeManifest(projectRoot, manifest);
 
   const skillsDir = path.join(projectRoot, '.claude', 'skills');
   fs.mkdirSync(skillsDir, { recursive: true });
-  fs.writeFileSync(path.join(skillsDir, `${name}.md`), content, 'utf8');
+
+  const destDir = await downloadSkill(existing.source, name, newVersion, skillsDir);
+  const sha256 = computeFolderSha256(destDir);
+
+  manifest.skills[name] = { ...existing, version: newVersion, resolvedCommit, sha256 };
+  writeManifest(projectRoot, manifest);
 
   return resolvedCommit;
 }

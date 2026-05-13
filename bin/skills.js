@@ -2,7 +2,9 @@
 'use strict';
 
 const { Command } = require('commander');
+const { initCommand } = require('../src/commands/init');
 const { installCommand } = require('../src/commands/install');
+const { verifyCommand } = require('../src/commands/verify');
 const { addCommand } = require('../src/commands/add');
 const { upgradeCommand, upgradeAllCommand } = require('../src/commands/upgrade');
 const { removeCommand } = require('../src/commands/remove');
@@ -30,6 +32,15 @@ program
 // ---------- Core commands ----------
 
 program
+  .command('init')
+  .description('Scaffold .claude/skills.json and update .gitignore')
+  .action(() => initCommand(projectRoot).catch(handleError))
+  .addHelpText('after', `
+Example:
+  $ skills init                                       # run once per project before "skills skill add"
+`);
+
+program
   .command('install')
   .description('Sync .claude/skills/ from .claude/skills.json')
   .action(() => installCommand(projectRoot).catch(handleError))
@@ -45,6 +56,17 @@ program
   .addHelpText('after', `
 Example:
   $ skills list
+`);
+
+program
+  .command('verify')
+  .description('Check manifest integrity and that source tags still match (CI gate)')
+  .option('--offline', 'Skip remote checks; only validate manifest schema')
+  .action((options) => verifyCommand(projectRoot, options).catch(handleError))
+  .addHelpText('after', `
+Examples:
+  $ skills verify                                     # full check (hits remote)
+  $ skills verify --offline                           # schema-only, no network
 `);
 
 program

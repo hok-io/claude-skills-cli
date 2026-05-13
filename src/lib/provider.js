@@ -56,24 +56,55 @@ async function resolveTagCommit(source, version) {
   return line.split(/\s+/)[0];
 }
 
-async function downloadSkillFile(source, name, version) {
-  return withTempDir(async (dir) => {
-    await shallowClone(source, dir, version);
-    const file = path.join(dir, `${name}.md`);
-    if (!fs.existsSync(file)) {
-      throw new Error(`"${name}.md" not found in ${source}@${version}.`);
+function copyDirectory(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const s = path.join(src, entry.name);
+    const d = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirectory(s, d);
+    } else if (entry.isFile()) {
+      fs.copyFileSync(s, d);
     }
-    return fs.readFileSync(file, 'utf8');
+    // Symlinks and special files are intentionally skipped.
+  }
+}
+
+// Download a skill directory from the source repo into <destParent>/<name>/.
+// Requires Anthropic Agent Skills spec layout: <source-root>/<name>/SKILL.md.
+// Returns the absolute path of the copied directory.
+async function downloadSkill(source, name, version, destParent) {
+  return withTempDir(async (cloneDir) => {
+    await shallowClone(source, cloneDir, version);
+    const srcDir = path.join(cloneDir, name);
+    const skillMd = path.join(srcDir, 'SKILL.md');
+    if (!fs.existsSync(skillMd)) {
+      throw new Error(
+        `"${name}/SKILL.md" not found in ${source}@${version}. ` +
+        `Source repo must follow the Agent Skills spec (folder-per-skill, uppercase SKILL.md).`
+      );
+    }
+    const destDir = path.join(destParent, name);
+    if (fs.existsSync(destDir)) fs.rmSync(destDir, { recursive: true, force: true });
+    copyDirectory(srcDir, destDir);
+    return destDir;
   });
 }
 
-async function listSkillFiles(source) {
+// List skill names available in a source repo: root-level directories
+// that contain a SKILL.md.
+async function listSkillDirs(source) {
   return withTempDir(async (dir) => {
     await shallowClone(source, dir);
-    return fs.readdirSync(dir)
-      .filter(f => f.endsWith('.md'))
-      .map(f => f.slice(0, -3))
-      .sort();
+    const out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.')) continue; // skip .git, .github, etc.
+      if (fs.existsSync(path.join(dir, entry.name, 'SKILL.md'))) {
+        out.push(entry.name);
+      }
+    }
+    return out.sort();
   });
 }
 
@@ -102,4 +133,4 @@ function compareSemverDesc(a, b) {
   return 0;
 }
 
-module.exports = { resolveTagCommit, downloadSkillFile, listSkillFiles, listTags };
+module.exports = { resolveTagCommit, downloadSkill, listSkillDirs, listTags };

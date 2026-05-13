@@ -2,11 +2,13 @@
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { readManifest, MANIFEST_PATH } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile } = require('../lib/provider');
-const { computeSha256 } = require('../lib/checksum');
+const { resolveTagCommit, downloadSkill } = require('../lib/provider');
+const { computeFolderSha256 } = require('../lib/checksum');
+const { getAllowlistLayers } = require('../lib/policy');
 
 const exec = promisify(execFile);
 
@@ -62,20 +64,37 @@ async function doctorCommand(projectRoot) {
     return;
   }
 
+  // Effective source allowlist policy
+  let policyLayers = [];
+  try {
+    policyLayers = getAllowlistLayers(projectRoot);
+  } catch (err) {
+    fail(`Policy error: ${err.message}`);
+  }
+  if (policyLayers.length === 0) {
+    ok('Source allowlist: none (all sources allowed)');
+  } else {
+    ok(`Source allowlist active (${policyLayers.length} layer(s)):`);
+    for (const layer of policyLayers) {
+      console.log(`      • ${layer.name} [${layer.origin}]: ${layer.prefixes.join(', ')}`);
+    }
+  }
+
   // .gitignore
   const gitignorePath = path.join(projectRoot, '.gitignore');
   if (fs.existsSync(gitignorePath)) {
     const gitignore = fs.readFileSync(gitignorePath, 'utf8');
     const covered =
+      gitignore.includes('.claude/skills/**') ||
       gitignore.includes('.claude/skills/') ||
-      gitignore.includes('.claude/skills/*.md');
+      gitignore.includes('.claude/skills/*.md'); // legacy entry from v1.x init
     if (covered) {
       ok('.gitignore covers .claude/skills/');
     } else {
-      warn('.gitignore does not exclude .claude/skills/ — add: .claude/skills/*.md');
+      warn('.gitignore does not exclude .claude/skills/ — add: .claude/skills/**');
     }
   } else {
-    warn('.gitignore not found — create one and add .claude/skills/*.md');
+    warn('.gitignore not found — create one and add .claude/skills/**');
   }
 
   // Per-skill checks
@@ -104,16 +123,21 @@ async function doctorCommand(projectRoot) {
         ok('resolvedCommit matches remote');
       }
 
-      const content = await downloadSkillFile(skill.source, name, skill.version);
-      const sha256 = computeSha256(content);
-      if (sha256 !== skill.sha256) {
-        fail(
-          `sha256 mismatch\n` +
-          `      manifest: ${skill.sha256}\n` +
-          `      computed: ${sha256}`
-        );
-      } else {
-        ok('sha256 matches');
+      const tmpParent = fs.mkdtempSync(path.join(os.tmpdir(), 'skills-doctor-'));
+      try {
+        const destDir = await downloadSkill(skill.source, name, skill.version, tmpParent);
+        const sha256 = computeFolderSha256(destDir);
+        if (sha256 !== skill.sha256) {
+          fail(
+            `sha256 mismatch\n` +
+            `      manifest: ${skill.sha256}\n` +
+            `      computed: ${sha256}`
+          );
+        } else {
+          ok('sha256 matches');
+        }
+      } finally {
+        fs.rmSync(tmpParent, { recursive: true, force: true });
       }
     } catch (err) {
       fail(err.message);

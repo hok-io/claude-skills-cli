@@ -1,7 +1,7 @@
 'use strict';
 
 const { readManifest } = require('../lib/manifest');
-const { listSkillFiles } = require('../lib/provider');
+const { listSkillDirs } = require('../lib/provider');
 
 async function availableCommand(projectRoot) {
   const manifest = readManifest(projectRoot);
@@ -21,7 +21,7 @@ async function availableCommand(projectRoot) {
   for (const source of sources) {
     process.stdout.write(`From ${source}: `);
     try {
-      const skills = await listSkillFiles(source);
+      const skills = await listSkillDirs(source);
       const notInstalled = skills.filter(name => !installed.has(name));
       if (notInstalled.length === 0) {
         console.log('all skills installed');

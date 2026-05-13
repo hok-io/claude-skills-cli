@@ -1,7 +1,7 @@
 'use strict';
 
 const { readManifest } = require('../lib/manifest');
-const { listSkillFiles } = require('../lib/provider');
+const { listSkillDirs } = require('../lib/provider');
 
 async function searchCommand(source, projectRoot) {
   const manifest = readManifest(projectRoot);
@@ -9,10 +9,10 @@ async function searchCommand(source, projectRoot) {
 
   console.log(`Fetching skills from ${source}...\n`);
 
-  const skills = await listSkillFiles(source);
+  const skills = await listSkillDirs(source);
 
   if (skills.length === 0) {
-    console.log('No skill files (.md) found in the repository root.');
+    console.log('No skill directories (containing SKILL.md) found at the repository root.');
     return;
   }
 

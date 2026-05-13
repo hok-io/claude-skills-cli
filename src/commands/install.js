@@ -3,8 +3,8 @@
 const path = require('path');
 const fs = require('fs');
 const { readManifest } = require('../lib/manifest');
-const { resolveTagCommit, downloadSkillFile } = require('../lib/provider');
-const { computeSha256 } = require('../lib/checksum');
+const { resolveTagCommit, downloadSkill } = require('../lib/provider');
+const { computeFolderSha256 } = require('../lib/checksum');
 
 async function installCommand(projectRoot) {
   const manifest = readManifest(projectRoot);
@@ -47,8 +47,8 @@ async function installCommand(projectRoot) {
         );
       }
 
-      const content = await downloadSkillFile(skill.source, name, skill.version);
-      const sha256 = computeSha256(content);
+      const destSkillDir = await downloadSkill(skill.source, name, skill.version, tmpDir);
+      const sha256 = computeFolderSha256(destSkillDir);
 
       if (sha256 !== skill.sha256) {
         throw new Error(
@@ -59,7 +59,6 @@ async function installCommand(projectRoot) {
         );
       }
 
-      fs.writeFileSync(path.join(tmpDir, `${name}.md`), content, 'utf8');
       console.log('done');
     }
 
